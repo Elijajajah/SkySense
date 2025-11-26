@@ -1,49 +1,56 @@
-from fastapi.middleware.cors import CORSMiddleware
+# main.py (FastAPI)
 from fastapi import FastAPI
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 from src.predict import predict_weather_from_features
 
-app = FastAPI(
-    title="Weather Prediction API",
-    description="Predict weather conditions using a trained ML model.",
-    version="1.0"
-)
+app = FastAPI()
 
+# Allow your frontend to call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Change this to your domain later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ---- Request Body Schema ----
+# ------------------------------------------------------------
+# Incoming JSON structure
+# ------------------------------------------------------------
 class WeatherRequest(BaseModel):
-    precipitation: float = Field(..., example=0.0)
-    temp_max: float = Field(..., example=12.8)
-    temp_min: float = Field(..., example=5.0)
-    wind: float = Field(..., example=4.7)
+    precipitation: float
+    temp_max: float
+    temp_min: float
+    wind: float
 
-# ---- API Routes ----
-@app.get("/")
-def root():
-    return {"message": "Weather Prediction API is running!"}
 
+# ------------------------------------------------------------
+# Prediction Endpoint
+# ------------------------------------------------------------
 @app.post("/predict")
 def predict_weather(data: WeatherRequest):
-    # Convert Pydantic model to list
-    features = [
+
+    pred_label, conf_percent = predict_weather_from_features(
         data.precipitation,
         data.temp_max,
         data.temp_min,
         data.wind,
-        data.temp_max - data.temp_min
-    ]
-
-    pred_label, confidence = predict_weather_from_features(features)
+    )
 
     return {
         "prediction": pred_label,
-        "confidence_percent": round(confidence * 100, 2),
-        "input_features": features
+        "confidence_percent": round(conf_percent, 2),
+        "input_features": {
+            "precipitation": data.precipitation,
+            "temp_max": data.temp_max,
+            "temp_min": data.temp_min,
+            "wind": data.wind,
+            "temp_range": data.temp_max - data.temp_min,
+        },
     }
+
+
+@app.get("/")
+def root():
+    return {"message": "Weather prediction API is running!"}

@@ -77,23 +77,23 @@ document.addEventListener('DOMContentLoaded', function () {
         let hasError = false;
 
         // -------- FIXED VALIDATION --------
-        if (isNaN(precipitation) || precipitation < 0 || precipitation > 60) {
+        if (isNaN(precipitation) || precipitation < 0 || precipitation > 35) {
             const errEl = document.getElementById('precipitationError');
-            errEl.textContent = 'Precipitation must be between 0 and 60 mm';
+            errEl.textContent = 'Precipitation must be between 0 and 35 mm';
             errEl.classList.remove('hidden');
             document.getElementById('precipitation').classList.add('border-red-500');
             hasError = true;
         }
 
-        if (isNaN(tempMax) || tempMax < -20 || tempMax > 50) {
+        if (isNaN(tempMax) || tempMax < -2 || tempMax > 36) {
             const errEl = document.getElementById('temp_maxError');
-            errEl.textContent = 'Max Temp must be between -20°C and 50°C';
+            errEl.textContent = 'Max Temp must be between -2°C and 36°C';
             errEl.classList.remove('hidden');
             document.getElementById('temp_max').classList.add('border-red-500');
             hasError = true;
         }
 
-        if (isNaN(tempMin) || tempMin < -30 || tempMin > tempMax) {
+        if (isNaN(tempMin) || tempMin < -8 || tempMin > tempMax) {
             const errEl = document.getElementById('temp_minError');
             errEl.textContent = 'Min Temp must be ≤ Max Temp';
             errEl.classList.remove('hidden');
@@ -101,9 +101,9 @@ document.addEventListener('DOMContentLoaded', function () {
             hasError = true;
         }
 
-        if (isNaN(wind) || wind < 0 || wind > 30) {
+        if (isNaN(wind) || wind < 0 || wind > 8) {
             const errEl = document.getElementById('windError');
-            errEl.textContent = 'Wind must be between 0 and 30 km/h';
+            errEl.textContent = 'Wind must be between 0 and 8 km/h';
             errEl.classList.remove('hidden');
             document.getElementById('wind').classList.add('border-red-500');
             hasError = true;
@@ -152,12 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const confidenceValueEl = document.getElementById('confidenceValue');
             const confidencePath = document.getElementById('confidencePath');
-            confidenceValueEl.textContent = `${confidence}%`;
-
-            const circumference = 2 * Math.PI * 15.9155;
-            const dashOffset = circumference * (1 - confidence / 100);
-            confidencePath.style.strokeDasharray = `${circumference}`;
-            confidencePath.style.strokeDashoffset = dashOffset;
+            animateCircle(confidence);
 
             resultDisplay.style.animation = 'fadeIn 0.5s ease-in forwards';
 
@@ -169,23 +164,112 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('confidenceValue').textContent = '--';
         }
     });
+
+    // Animate circle graph
+    function animateCircle(confidence) {
+        const confidencePath = document.getElementById('confidencePath');
+        const confidenceValueEl = document.getElementById('confidenceValue');
+        const circumference = 2 * Math.PI * 15.9155;
+
+        let start = null;
+        const initialOffset = circumference; // start at 0% filled
+        const targetOffset = circumference * (1 - confidence / 100);
+
+        function step(timestamp) {
+            if (!start) start = timestamp;
+            const progress = Math.min((timestamp - start) / 1000, 1); // 1 second animation
+            const currentOffset = initialOffset + (targetOffset - initialOffset) * progress;
+            confidencePath.style.strokeDasharray = `${circumference}`;
+            confidencePath.style.strokeDashoffset = currentOffset;
+            confidenceValueEl.textContent = `${Math.round(progress * confidence)}%`;
+
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                confidenceValueEl.textContent = `${confidence}%`;
+            }
+        }
+
+        requestAnimationFrame(step);
+    }
 });
 
-// Randomizer
 document.addEventListener('DOMContentLoaded', () => {
     const weatherForm = document.getElementById('weatherForm');
     const randomizeButton = document.getElementById('randomizeButton');
 
     randomizeButton.addEventListener('click', () => {
-        const precipitation = parseFloat((Math.random() * 50).toFixed(1));
-        const tempMax = parseFloat((-5 + Math.random() * 45).toFixed(1));
-        const tempMin = parseFloat((-20 + Math.random() * (tempMax + 20)).toFixed(1));
-        const wind = parseFloat((Math.random() * 30).toFixed(1));
 
-        document.getElementById('precipitation').value = precipitation;
-        document.getElementById('temp_max').value = tempMax;
-        document.getElementById('temp_min').value = tempMin;
-        document.getElementById('wind').value = wind;
+        // Random number helper
+        const rand = (min, max, decimals = 1) => +(Math.random() * (max - min) + min).toFixed(decimals);
+
+        // 5 weather profiles with min/max ranges from your table
+        const profiles = [
+            // drizzle
+            () => {
+                const tempMax = rand(1.1, 31.7);
+                const tempMin = rand(-3.9, tempMax); // cannot exceed tempMax
+                return {
+                    precipitation: rand(0.0, 0.0),
+                    tempMax,
+                    tempMin,
+                    wind: rand(0.6, 4.7)
+                };
+            },
+            // fog
+            () => {
+                const tempMax = rand(1.7, 30.6);
+                const tempMin = rand(-3.2, tempMax);
+                return {
+                    precipitation: rand(0.0, 0.0),
+                    tempMax,
+                    tempMin,
+                    wind: rand(0.8, 6.6)
+                };
+            },
+            // rain
+            () => {
+                const tempMax = rand(3.9, 35.6);
+                const tempMin = rand(-3.8, tempMax);
+                return {
+                    precipitation: rand(0.0, 32.38),
+                    tempMax,
+                    tempMin,
+                    wind: rand(0.5, 7.54)
+                };
+            },
+            // snow
+            () => {
+                const tempMax = rand(-1.1, 11.1);
+                const tempMin = rand(-4.3, tempMax);
+                return {
+                    precipitation: rand(0.3, 23.9),
+                    tempMax,
+                    tempMin,
+                    wind: rand(1.6, 7.0)
+                };
+            },
+            // sun
+            () => {
+                const tempMax = rand(-1.6, 35.0);
+                const tempMin = rand(-7.1, tempMax);
+                return {
+                    precipitation: rand(0.0, 0.0),
+                    tempMax,
+                    tempMin,
+                    wind: rand(0.4, 7.54)
+                };
+            }
+        ];
+
+        // Randomly pick a weather profile
+        const profile = profiles[Math.floor(Math.random() * profiles.length)]();
+
+        // Fill the form
+        document.getElementById('precipitation').value = profile.precipitation;
+        document.getElementById('temp_max').value = profile.tempMax;
+        document.getElementById('temp_min').value = profile.tempMin;
+        document.getElementById('wind').value = profile.wind;
 
         weatherForm.requestSubmit();
     });
